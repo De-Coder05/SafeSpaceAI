@@ -902,39 +902,48 @@ def process_audio_file(audio_file: UploadFile):
         traceback.print_exc()
         raise ValueError(f"Failed to process audio file: {str(e)}")
 
-# === Load Models ===
-try:
-    print("Loading models...")
-    physio_model = joblib.load("models/regularized_global_model.pkl")
-    dass21_model = joblib.load("models/stacking_classifier_model.pkl")
-    dass21_scaler = joblib.load("models/scaler.pkl")
+# Global model variables
+physio_model = None
+dass21_model = None
+dass21_scaler = None
+voice_model = None
+fusion_model = None
 
-    # Load voice model with custom attention layer
-    voice_model = load_model(
-        "models/model_finetuned.h5",
-        compile=False,
-        custom_objects={"Attention": Attention},
-    )
-    print("✅ Voice model loaded successfully")
+def load_models_lazy():
+    global physio_model, dass21_model, dass21_scaler, voice_model, fusion_model
+    
+    if physio_model is not None:
+        return
 
-    # Updated fusion model to handle voice modality
-    fusion_model = PhysioDominantFusion(class_weights={0: 0.7, 1: 0.0, 2: 0.3})
+    try:
+        print("Loading models lazily...")
+        physio_model = joblib.load("models/regularized_global_model.pkl")
+        dass21_model = joblib.load("models/stacking_classifier_model.pkl")
+        dass21_scaler = joblib.load("models/scaler.pkl")
 
-    print("All models loaded successfully")
+        # Load voice model with custom attention layer
+        voice_model = load_model(
+            "models/model_finetuned.h5",
+            compile=False,
+            custom_objects={"Attention": Attention},
+        )
+        print("✅ Voice model loaded successfully")
 
-    # Initialize XAI explainers with some background data
-    # Note: In production, you would need actual background data
-    dummy_physio_data = np.random.rand(100, len(ALL_FEATURE_NAMES))
-    dummy_dass21_data = np.random.rand(100, 7) * 3
+        # Updated fusion model to handle voice modality
+        fusion_model = PhysioDominantFusion(class_weights={0: 0.7, 1: 0.0, 2: 0.3})
 
-    xai_explainer.setup_physio_explainer(physio_model, dummy_physio_data)
-    xai_explainer.setup_dass21_explainer(dass21_model, dass21_scaler, dummy_dass21_data)
+        print("All models loaded successfully")
 
-except Exception as e:
-    print(f"Error loading models: {e}")
-    raise
+        # Initialize XAI explainers
+        dummy_physio_data = np.random.rand(100, len(ALL_FEATURE_NAMES))
+        dummy_dass21_data = np.random.rand(100, 7) * 3
 
+        xai_explainer.setup_physio_explainer(physio_model, dummy_physio_data)
+        xai_explainer.setup_dass21_explainer(dass21_model, dass21_scaler, dummy_dass21_data)
 
+    except Exception as e:
+        print(f"Error loading models: {e}")
+        raise
 
 @app.post("/predict")
 async def predict(
@@ -942,6 +951,8 @@ async def predict(
     dass21_responses: str = Form(..., description="DASS-21 responses as comma-separated values or JSON array"),
     voice_audio: Optional[UploadFile] = File(None, description="Voice audio file (WAV, MP3, etc.) for stress analysis (optional)")
 ):
+    # Ensure models are loaded
+    load_models_lazy()
     """
     Predict stress level using physiological data, DASS-21 responses, and optional voice audio
     

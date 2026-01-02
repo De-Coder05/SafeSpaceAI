@@ -52,7 +52,7 @@ export default function Navbar() {
             </Link>
 
             <a
-              href="https://github.com/De-Coder05/SafeSpace-AI"
+              href="https://github.com/De-Coder05/SafeSpaceAI"
               target="_blank"
               rel="noopener noreferrer"
               className={`flex items-center space-x-2 transition-all duration-300 hover:scale-105 ${scrolled ? "text-gray-700 hover:text-blue-600" : "text-white/90 hover:text-white"
@@ -90,7 +90,7 @@ export default function Navbar() {
               </Link>
 
               <a
-                href="https://github.com/De-Coder05/SafeSpace-AI"
+                href="https://github.com/De-Coder05/SafeSpaceAI"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 px-3 py-2 text-white font-semibold hover:text-blue-200 hover:bg-blue-800/60 rounded-lg transition-all duration-200"

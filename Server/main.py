@@ -1069,22 +1069,19 @@ async def predict(
         # === Explainability ===
         print("\n🔍 Generating explanations...")
         try:
-        # === Explainability ===
-        print("\n🔍 Generating explanations...")
-        try:
             # Explain physiological prediction
             physio_explanation = xai_explainer.explain_physio_prediction(X_physio)
                 
-                # Explain DASS-21 prediction
-                dass21_explanation = xai_explainer.explain_dass21_prediction(np.array([dass21_list]))
-                
-                # Explain voice prediction
-                voice_explanation = xai_explainer.explain_voice_prediction(voice_probs)
-                
-                # Explain fusion decision
-                fusion_explanation = xai_explainer.explain_fusion_decision(fusion_input, fusion_probs)
-                
-                print("✅ Explanations generated successfully")
+            # Explain DASS-21 prediction
+            dass21_explanation = xai_explainer.explain_dass21_prediction(np.array([dass21_list]))
+            
+            # Explain voice prediction
+            voice_explanation = xai_explainer.explain_voice_prediction(voice_probs)
+            
+            # Explain fusion decision
+            fusion_explanation = xai_explainer.explain_fusion_decision(fusion_input, fusion_probs)
+            
+            print("✅ Explanations generated successfully")
         except Exception as e:
             print(f"⚠ Explanation generation failed: {e}")
             physio_explanation = {"available": False, "error": str(e)}

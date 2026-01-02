@@ -12,28 +12,18 @@ from scipy import signal
 from scipy.stats import skew, kurtosis
 import pywt
 from typing import List, Optional, Dict, Any
-import shap
-import lime
-import lime.lime_tabular
+
+from sklearn.inspection import permutation_importance
 from sklearn.inspection import permutation_importance
 from sklearn.base import BaseEstimator, TransformerMixin
-import matplotlib.pyplot as plt
-import seaborn as sns
 from io import BytesIO
 import base64
 import warnings
 warnings.filterwarnings('ignore')
 
 # Audio processing imports
-import librosa
-import soundfile as sf
 import tempfile
 import os
-
-# TensorFlow imports for voice model
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Layer
 
 # Import your existing fusion model
 from latefusion_final import PhysioDominantFusion
@@ -139,8 +129,8 @@ class XAIExplainer:
         self.feature_importance_cache = {}
         
     def setup_physio_explainer(self, model, X_background):
-        """Setup SHAP explainer for physiological model"""
         try:
+            import shap
             # Check if heavy XAI is enabled
             if os.environ.get("ENABLE_HEAVY_XAI", "false").lower() != "true":
                 print("ℹ️ Heavy XAI disabled. Using lightweight fallback.")
@@ -167,6 +157,7 @@ class XAIExplainer:
     def setup_dass21_explainer(self, model, scaler, X_background):
         """Setup SHAP explainer for DASS-21 model"""
         try:
+            import shap
             # Check if heavy XAI is enabled
             if os.environ.get("ENABLE_HEAVY_XAI", "false").lower() != "true":
                 print("ℹ️ Heavy XAI disabled. Using lightweight fallback.")
@@ -815,22 +806,6 @@ def validate_and_parse_dass21(dass21_responses: str):
         print(f"DASS-21 validation failed: {e}")
         raise
 
-# === Custom Attention Layer ===
-class Attention(Layer):
-    def __init__(self, **kwargs):
-        super(Attention, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        self.W = self.add_weight(name="att_weight", shape=(input_shape[-1], 1), initializer="normal")
-        self.b = self.add_weight(name="att_bias", shape=(input_shape[1], 1), initializer="zeros")
-        super().build(input_shape)
-
-    def call(self, x):
-        e = tf.keras.backend.tanh(tf.keras.backend.dot(x, self.W) + self.b)
-        a = tf.keras.backend.softmax(e, axis=1)
-        output = x * a
-        return tf.keras.backend.sum(output, axis=1)
-
 # === Voice Feature Extraction Functions ===
 def extract_mfcc_features(audio_path, n_mfcc=40, max_length=228):
     """
@@ -845,6 +820,7 @@ def extract_mfcc_features(audio_path, n_mfcc=40, max_length=228):
         MFCC features array of shape (max_length, n_mfcc)
     """
     try:
+        import librosa
         print(f"🔍 Loading audio file: {audio_path}")
         
         # Load audio file with librosa
@@ -953,6 +929,31 @@ def load_models_lazy():
 
     try:
         print("Loading models lazily...")
+        
+        # Lazy import of TensorFlow dependencies
+        if voice_model is None:
+            import tensorflow as tf
+            from tensorflow.keras.models import load_model
+            from tensorflow.keras.layers import Layer
+
+            # Define Attention layer locally to avoid global import
+            class Attention(Layer):
+                def __init__(self, **kwargs):
+                    super(Attention, self).__init__(**kwargs)
+
+                def build(self, input_shape):
+                    import tensorflow as tf
+                    self.W = self.add_weight(name="att_weight", shape=(input_shape[-1], 1), initializer="normal")
+                    self.b = self.add_weight(name="att_bias", shape=(input_shape[1], 1), initializer="zeros")
+                    super().build(input_shape)
+
+                def call(self, x):
+                    import tensorflow as tf
+                    e = tf.keras.backend.tanh(tf.keras.backend.dot(x, self.W) + self.b)
+                    a = tf.keras.backend.softmax(e, axis=1)
+                    output = x * a
+                    return tf.keras.backend.sum(output, axis=1)
+        
         physio_model = joblib.load("models/regularized_global_model.pkl")
         dass21_model = joblib.load("models/stacking_classifier_model.pkl")
         dass21_scaler = joblib.load("models/scaler.pkl")

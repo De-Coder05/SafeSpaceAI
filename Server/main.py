@@ -161,7 +161,8 @@ class XAIExplainer:
     def setup_dass21_explainer(self, model, scaler, X_background):
         """Setup SHAP explainer for DASS-21 model"""
         try:
-            background_sample = X_background[:min(100, len(X_background))]
+            # Reduce background samples to 15 to save memory on free tier
+            background_sample = X_background[:min(15, len(X_background))]
             
             def model_predict(X):
                 X_scaled = scaler.transform(X)
@@ -1071,9 +1072,8 @@ async def predict(
         # === Explainability ===
         print("\n🔍 Generating explanations...")
         try:
-            if os.environ.get("ENABLE_XAI", "false").lower() == "true":
-                # Explain physiological prediction
-                physio_explanation = xai_explainer.explain_physio_prediction(X_physio)
+            # Explain physiological prediction
+            physio_explanation = xai_explainer.explain_physio_prediction(X_physio)
                 
                 # Explain DASS-21 prediction
                 dass21_explanation = xai_explainer.explain_dass21_prediction(np.array([dass21_list]))
@@ -1085,12 +1085,6 @@ async def predict(
                 fusion_explanation = xai_explainer.explain_fusion_decision(fusion_input, fusion_probs)
                 
                 print("✅ Explanations generated successfully")
-            else:
-                print("ℹ️ XAI disabled by default to save memory (set ENABLE_XAI=true to enable)")
-                physio_explanation = {"available": False, "reason": "Disabled for performance"}
-                dass21_explanation = {"available": False, "reason": "Disabled for performance"}
-                voice_explanation = {"available": False, "reason": "Disabled for performance"}
-                fusion_explanation = {"available": False, "reason": "Disabled for performance"}
         except Exception as e:
             print(f"⚠ Explanation generation failed: {e}")
             physio_explanation = {"available": False, "error": str(e)}

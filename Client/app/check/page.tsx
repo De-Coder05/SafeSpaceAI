@@ -127,6 +127,31 @@ export default function CheckPage() {
     }
   }
 
+  const loadSampleData = async () => {
+    try {
+      // Load physiological data
+      const physioResponse = await fetch("/sample-data/sample_physio.csv");
+      const physioBlob = await physioResponse.blob();
+      const physioFile = new File([physioBlob], "sensor_data_with_temp2.csv", { type: "text/csv" });
+      setUploadedFile(physioFile);
+
+      // Load voice data
+      const voiceResponse = await fetch("/sample-data/sample_voice.wav");
+      const voiceBlob = await voiceResponse.blob();
+      const voiceFile = new File([voiceBlob], "sample-15s.wav", { type: "audio/wav" });
+      setAudioFile(voiceFile);
+      setAudioURL(URL.createObjectURL(voiceFile));
+
+      // Auto-fill DASS-21 with sample data (moderate stress profile)
+      setDass21Responses([1, 2, 3, 2, 1, 2, 3]);
+
+      alert("Sample data loaded successfully!");
+    } catch (error) {
+      console.error("Error loading sample data:", error);
+      alert("Failed to load sample data.");
+    }
+  };
+
   //   const analyzeAllModalities = async () => {
   //   if (!allDataReady || !uploadedFile || !audioFile) return;
 
@@ -293,6 +318,14 @@ export default function CheckPage() {
               </AlertDescription>
             </Alert>
           )}
+
+          <Button
+            onClick={loadSampleData}
+            variant="outline"
+            className="mb-8 bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 shadow-sm mx-auto block"
+          >
+            Load Sample Data (Demo)
+          </Button>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">

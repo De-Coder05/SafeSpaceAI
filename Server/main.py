@@ -141,6 +141,12 @@ class XAIExplainer:
     def setup_physio_explainer(self, model, X_background):
         """Setup SHAP explainer for physiological model"""
         try:
+            # Check if heavy XAI is enabled
+            if os.environ.get("ENABLE_HEAVY_XAI", "false").lower() != "true":
+                print("ℹ️ Heavy XAI disabled. Using lightweight fallback.")
+                self.physio_explainer = None
+                return
+
             # Use a subset of background data for efficiency
             background_sample = X_background[:min(100, len(X_background))]
             
@@ -161,6 +167,12 @@ class XAIExplainer:
     def setup_dass21_explainer(self, model, scaler, X_background):
         """Setup SHAP explainer for DASS-21 model"""
         try:
+            # Check if heavy XAI is enabled
+            if os.environ.get("ENABLE_HEAVY_XAI", "false").lower() != "true":
+                print("ℹ️ Heavy XAI disabled. Using lightweight fallback.")
+                self.dass21_explainer = None
+                return
+
             # Reduce background samples to 15 to save memory on free tier
             background_sample = X_background[:min(15, len(X_background))]
             
@@ -285,6 +297,29 @@ class XAIExplainer:
         }
         
         if self.dass21_explainer is None:
+            # Fallback: Use raw scores as importance
+            print("⚠ SHAP explainer not available, using score-based importance")
+            feature_importance = []
+            
+            for i, score in enumerate(X_sample[0]):
+                if i < len(DASS21_FEATURE_NAMES):
+                    importance = float(score)  # Higher score = higher importance
+                    feature_importance.append({
+                        "feature": DASS21_FEATURE_NAMES[i],
+                        "importance": importance,
+                        "abs_importance": abs(importance),
+                        "value": float(score)
+                    })
+            
+            # Sort by importance
+            feature_importance.sort(key=lambda x: x["abs_importance"], reverse=True)
+            
+            explanations.update({
+                "available": True,
+                "method": "Score Analysis (Lightweight)",
+                "feature_importance": feature_importance[:top_k],
+                "summary": self._generate_dass21_summary(feature_importance[:top_k])
+            })
             return explanations
             
         try:
